@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>发布订阅模式</title>
+  </head>
+  <body>
+    <script>
+      class Dep {
+        constructor() {
+          this.subs = []
+        }
+        addSub(sub) {
+          this.subs.push(sub)
+        }
+        notify() {
+          this.subs.forEach(item => item.update())
+        }
+      }
+
+      class Watcher {
+        constructor(callback) {
+          this.callback = callback
+        }
+        update() {
+          this.callback()
+        }
+      }
+
+      const dep = new Dep()
+
+      const father = {
+        eat() {
+          dep.addSub(
+            new Watcher(() => {
+              console.log('爸爸：不给出去玩！准备吃饭了')
+            })
+          )
+        },
+      }
+
+      const mother = {
+        eat() {
+          dep.addSub(
+            new Watcher(() => {
+              console.log('妈妈：不给出去玩！准备吃饭了')
+            })
+          )
+        },
+      }
+
+      father.eat()
+      mother.eat()
+
+      const son = {
+        play() {
+          console.log('儿子：爸，我出去玩会~')
+          dep.notify()
+        },
+      }
+
+      setTimeout(son.play, 2000)
+    </script>
+  </body>
+</html>

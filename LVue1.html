@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LVue1</title>
+  </head>
+  <body>
+    <div id="app">
+      <div>
+        {{name}}
+        <span>{{age}}</span>
+      </div>
+      我是文本节点
+      <span>{{address}}</span>
+    </div>
+    <script>
+      // 继承 EventTarget 实现监听事件
+      /* new content start */
+      class LVue extends EventTarget {
+        /* new content end */
+        constructor(option) {
+          super()
+          this.$option = option
+          this._data = option.data
+          this.observe(option.data)
+          this.compile()
+        }
+        observe(data) {
+          const keys = Object.keys(data)
+          const that = this
+          keys.forEach(key => {
+            let value = data[key]
+            Object.defineProperty(data, key, {
+              configurable: true,
+              enumerable: true,
+              get() {
+                return value
+              },
+              set(newValue) {
+                /* new content start */
+                // 触发对应 key 事件
+                that.dispatchEvent(new CustomEvent(key, { detail: newValue }))
+                /* new content end */
+                // 更新闭包中缓存的 value
+                value = newValue
+              },
+            })
+          })
+        }
+        compile() {
+          const el = document.querySelector(this.$option.el)
+          this.compileNodes(el)
+        }
+        compileNodes(el) {
+          /* 获取所有子节点 */
+          const childNodes = el.childNodes
+          childNodes.forEach(node => {
+            /* 如果为元素节点，并且该节点内部还有内容，就继续进行遍历编译 */
+            if (node.nodeType === 1 && node.childNodes.length > 0) {
+              /* 元素节点 */
+              this.compileNodes(node)
+            } else if (node.nodeType === 3) {
+              /* 文本节点 */
+              const textContent = node.textContent
+              // 创建正则。匹配{{}}中的内容
+              const reg = /\{\{\s*([^\{\}\s]+)\s*\}\}/g
+              /* 匹配成功的就是我们需要的内容 */
+              if (reg.test(textContent)) {
+                // 获得匹配到的内容
+                const name = RegExp.$1
+                // 替换内容
+                node.textContent = node.textContent.replace(reg, this._data[name])
+                /* new content start */
+                // 监听 name 对应的事件
+                this.addEventListener(name, e => {
+                  const newValue = e.detail
+                  const oldValue = this._data[name]
+                  node.textContent = node.textContent.replace(oldValue, newValue)
+                  console.log('页面数据刷新了')
+                })
+                /* new content end */
+              }
+            }
+          })
+        }
+      }
+
+      const lvue = new LVue({
+        el: '#app',
+        data: {
+          name: 'layouwen',
+          age: 22,
+          address: '广州市荔湾区',
+        },
+      })
+      setTimeout(() => {
+        lvue._data.name = '梁又文'
+        setTimeout(() => {
+          lvue._data.age = 23
+        }, 1000)
+      }, 2000)
+    </script>
+  </body>
+</html>

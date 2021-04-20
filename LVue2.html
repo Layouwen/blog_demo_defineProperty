@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LVue2</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>{{name}}</h1>
+      <input type="text" v-model="name" />
+      <div>
+        <p>年龄:{{age}}</p>
+        <p>地址:{{address}}</p>
+      </div>
+    </div>
+    <script>
+      class LVue2 {
+        constructor(option) {
+          this.$option = option
+          this.$data = option.data
+          this.observer()
+          this.compile()
+        }
+        observer() {
+          const keys = Object.keys(this.$data)
+          keys.forEach(keyName => {
+            const dep = new Dep()
+            let value = this.$data[keyName]
+            Object.defineProperty(this.$data, keyName, {
+              configurable: true,
+              enumerable: true,
+              get() {
+                if (Dep.target) {
+                  dep.addSub(Dep.target)
+                }
+                return value
+              },
+              set(newValue) {
+                dep.notify(newValue)
+                value = newValue
+              },
+            })
+          })
+        }
+        compile() {
+          const el = document.querySelector(this.$option.el)
+          this.compileNodes(el)
+        }
+        compileNodes(el) {
+          const childNodes = el.childNodes
+          childNodes.forEach(node => {
+            if (node.nodeType === 1) {
+              /* new content start */
+              // 新增 v-model 属性监听
+              let attrs = node.attributes
+              ;[...attrs].forEach(attr => {
+                const attrName = attr.name
+                const attrValue = attr.value
+                if (attrName === 'v-model') {
+                  node.value = this.$data[attrValue]
+                  node.addEventListener('input', e => {
+                    this.$data[attrValue] = e.target.value
+                  })
+                }
+              })
+              /* new content end */
+              if (node.childNodes.length > 0) {
+                this.compileNodes(node)
+              }
+            } else if (node.nodeType === 3) {
+              const textContent = node.textContent
+              const reg = /\{\{\s*([^\{\}\s]+)\s*\}\}/g
+              if (reg.test(textContent)) {
+                const valueName = RegExp.$1
+                node.textContent = node.textContent.replace(reg, this.$data[valueName])
+                new Watcher(this.$data, valueName, newValue => {
+                  console.log('cb:', newValue)
+                  const oldValue = this.$data[valueName]
+                  node.textContent = node.textContent.replace(oldValue, newValue)
+                })
+              }
+            }
+          })
+        }
+      }
+
+      class Dep {
+        constructor() {
+          this.subs = []
+        }
+        addSub(sub) {
+          this.subs.push(sub)
+        }
+        notify(newValue) {
+          this.subs.forEach(sub => {
+            sub.update(newValue)
+          })
+        }
+      }
+
+      class Watcher {
+        constructor(data, key, cb) {
+          this.cb = cb
+          Dep.target = this
+          data[key]
+          Dep.target = null
+        }
+        update(newValue) {
+          this.cb(newValue)
+        }
+      }
+
+      const lvue2 = new LVue2({
+        el: '#app',
+        data: {
+          name: '梁又文',
+          age: 23,
+          address: '广州市荔湾区',
+        },
+      })
+      setTimeout(() => (lvue2.$data.name = '梁文文'), 1000)
+    </script>
+  </body>
+</html>
